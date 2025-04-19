@@ -9,7 +9,7 @@ This project implements a UAV control and tracking system for Teknofest 2022. It
 - **Utils**: helper modules (`videoUtils.py`, `DetectAndTrackUtils.py`).
 - **Examples**: `usage_example.py` demonstrates server & client usage.
 
-## Directory Structure
+## Structure
 ```
 2022-Teknofest-Figther-UAV/
 ├── server.py
