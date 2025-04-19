@@ -1,300 +1,238 @@
+import logging
 import json
-#from multiprocessing import parent_process
-from multiprocessing.connection import Client, Listener
-from re import A
-from typing import Dict
-import requests
-import time
-from datetime import datetime, timedelta
 from datetime import datetime
-from dronekit import Vehicle, connect, VehicleMode
-import time
-#--- Start the Software In The Loop (SITL)
+from typing import Tuple, Optional
 import requests
-from dronekit import connect, VehicleMode
-import time
-from dronekit import connect
-import random
-from requests.api import request
-import cv2
-import datetime
-
-a = 0
+from dronekit import Vehicle, connect
 
 class Communication:
-    f = open("log.txt", "a")
-    def __init__(self):
-        
-        self.f.write("----This is the Start of the log----")
-    
-    
-    def closing(self):
-        self.f.close()
+    """
+    Handles communication with the UAV and the remote server via REST API.
+    """
 
-    def drawHud(self,width,height):
-        xRight = int(width/4)
-        yRight = int(height/10)
-        xLeft = xRight*3
-        yLeft = yRight*9
-        
-        return xRight, yRight, xLeft, yLeft
+    def __init__(self, team_number: int = 199, server_url: str = "http://10.0.0.15:64559"):
+        """
+        Initialize communication client.
 
-    def __init__(self):
-        self.teamnumber = 199
-        self.url_value_given_by_teknofest = "http://10.0.0.15:64559" #2022 savasan
-        #self.url_value_given_by_teknofest = "http://192.168.20.10:64559" --> probably the teknofest address
-        #self.url_value_given_by_teknofest = "http://127.0.0.1:8000"
-        
-    
-    def connectDrone(self):
-        print(">>>> Connecting with the UAV <<<")
-        """sitl = dronekit_sitl.start_default()   #(sitl.start)
-        connection_string = sitl.connection_string()
-        connection_string = "/dev/ttyUSB1"#/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A10JXPUC-if00-port0"#/dev/ttyUSB0"
-        print(">>>> Connecting with the UAV <<<")"""
-        #connection_string = "/dev/ttyUSB1"#/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A10JXPUC-if00-port0"#/dev/ttyUSB0"
-        #sitl = dronekit_sitl.start_default()
-        #connection_string = sitl.connection_string()
-        #vehicle = connect(connection_string, wait_ready=True, baud=57600)
-        #vehicle = connect("127.0.0.1:" + str(14560),baud=57600)
-        
-        vehicle = connect("127.0.0.1:" + str(14570))     #- wait_ready flag hold the program untill all the parameters are been read (=, not .) Ucaga buradan baglanir
+        Args:
+            team_number: Teknofest team number.
+            server_url: Base URL for server API endpoints.
+        """
+        self.team_number = team_number
+        self.server_url = server_url.rstrip("/")
+        self.session = requests.Session()
+        self.log_file = open("log.txt", "a")
+        logging.basicConfig(
+            level=logging.INFO,
+            filename="log.txt",
+            format="%(asctime)s - %(levelname)s - %(message)s",
+        )
+        logging.info("=== Start of Communication Log ===")
+
+    def close(self) -> None:
+        """
+        Close log file and HTTP session.
+        """
+        self.session.close()
+        self.log_file.close()
+
+    def draw_hud(self, width: int, height: int) -> Tuple[int, int, int, int]:
+        """
+        Calculate HUD overlay positions based on frame dimensions.
+
+        Returns:
+            Tuple of (x_right, y_right, x_left, y_left).
+        """
+        x_right = width // 4
+        y_right = height // 10
+        x_left = x_right * 3
+        y_left = y_right * 9
+        return x_right, y_right, x_left, y_left
+
+    def connect_drone(self, connection_str: str = "127.0.0.1:14570", baud: int = 57600) -> Vehicle:
+        """
+        Connect to UAV via DroneKit.
+
+        Args:
+            connection_str: Connection string for UAV (e.g., SITL or serial port).
+            baud: Baud rate for serial connection.
+
+        Returns:
+            Connected Vehicle instance.
+        """
+        logging.info(f"Connecting to UAV at {connection_str} with baud {baud}")
+        vehicle = connect(connection_str, baud=baud, wait_ready=True)
         return vehicle
 
-    def connectToServer(self,s):
-        team_payload ={
-            "kadi": "sufaiprojeekibi",
-            "sifre": "61aynprs23"
-         }
+    def login(self, username: str, password: str) -> requests.Response:
+        """
+        Authenticate with remote server.
 
-        r = s.post(self.url_value_given_by_teknofest + '/api/giris', json = team_payload)
-        #print("Connection Situation(must be <<200>>): "+str(r)+"-----------"+r.text)
-        return s
+        Args:
+            username: Team username.
+            password: Team password.
 
-    def sendKamikaze(self, passVal, utc, qr_text):
-        rand = random.randint(0, 979)
-        rand2 = random.randint(2, 4)
-        rand_bitis = random.randint(0, 19)
-        #rand2_bitis = random.randint(2, 4)
-        miliS = utc[3]
-        second = utc[2]
-        minute = utc[1]
-        hour = utc[0]
-        """if second < 0:
-            minute-1
-        if minute <= 0:
-            hour -=1
-"""
-        milis_bitis = rand_bitis
-        second_bitis = utc[2]
-        minute_bitis = utc[1]
-        hour_bitis = utc[0]
-        if second_bitis < 0:
-            minute_bitis-1
-        if minute_bitis <= 0:
-            hour_bitis -=1
-        print(second)
-        print(miliS)
-        a = {
-        "kamikazeBaslangicZamani": {
-        "saat": hour,
-        "dakika": minute,
-        "saniye": second,
-        "milisaniye": miliS - 98
-        },
-        "kamikazeBitisZamani": {
-        "saat": hour_bitis,
-        "dakika": minute_bitis,
-        "saniye": second_bitis,
-        "milisaniye": miliS
-        },
-        "qrMetni": qr_text
+        Returns:
+            HTTP Response from server.
+        """
+        payload = {"username": username, "password": password}
+        url = f"{self.server_url}/api/login"
+        logging.info(f"Logging in to {url}")
+        response = self.session.post(url, json=payload)
+        response.raise_for_status()
+        return response
+
+    def send_kamikaze(self, start_time: datetime, end_time: datetime, qr_text: str) -> requests.Response:
+        """
+        Send kamikaze mission information to server.
+
+        Args:
+            start_time: Mission start datetime.
+            end_time: Mission end datetime.
+            qr_text: Detected QR code text.
+
+        Returns:
+            HTTP Response from server.
+        """
+        payload = {
+            "kamikazeStartTime": {"hours": start_time.hour, "minutes": start_time.minute, "seconds": start_time.second, "milliseconds": int(start_time.microsecond / 1000)},
+            "kamikazeEndTime":   {"hours": end_time.hour,   "minutes": end_time.minute,   "seconds": end_time.second,   "milliseconds": int(end_time.microsecond / 1000)},
+            "qrText": qr_text,
         }
-        print("--------------------------QR TEXT------------------")
-        print(qr_text)
-        print("""\n
+        url = f"{self.server_url}/api/kamikaze-info"
+        logging.info(f"Sending kamikaze payload: {json.dumps(payload)}")
+        response = self.session.post(url, json=payload)
+        response.raise_for_status()
+        return response
 
-     QQQQQQQQQ     RRRRRRRRRRRRRRRRR        DDDDDDDDDDDDD      EEEEEEEEEEEEEEEEEEEEEETTTTTTTTTTTTTTTTTTTTTTTEEEEEEEEEEEEEEEEEEEEEE       CCCCCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTT
-   QQ:::::::::QQ   R::::::::::::::::R       D::::::::::::DDD   E::::::::::::::::::::ET:::::::::::::::::::::TE::::::::::::::::::::E    CCC::::::::::::CT:::::::::::::::::::::T
- QQ:::::::::::::QQ R::::::RRRRRR:::::R      D:::::::::::::::DD E::::::::::::::::::::ET:::::::::::::::::::::TE::::::::::::::::::::E  CC:::::::::::::::CT:::::::::::::::::::::T
-Q:::::::QQQ:::::::QRR:::::R     R:::::R     DDD:::::DDDDD:::::DEE::::::EEEEEEEEE::::ET:::::TT:::::::TT:::::TEE::::::EEEEEEEEE::::E C:::::CCCCCCCC::::CT:::::TT:::::::TT:::::T
-Q::::::O   Q::::::Q  R::::R     R:::::R       D:::::D    D:::::D E:::::E       EEEEEETTTTTT  T:::::T  TTTTTT  E:::::E       EEEEEEC:::::C       CCCCCCTTTTTT  T:::::T  TTTTTT
-Q:::::O     Q:::::Q  R::::R     R:::::R       D:::::D     D:::::DE:::::E                     T:::::T          E:::::E            C:::::C                      T:::::T        
-Q:::::O     Q:::::Q  R::::RRRRRR:::::R        D:::::D     D:::::DE::::::EEEEEEEEEE           T:::::T          E::::::EEEEEEEEEE  C:::::C                      T:::::T        
-Q:::::O     Q:::::Q  R:::::::::::::RR         D:::::D     D:::::DE:::::::::::::::E           T:::::T          E:::::::::::::::E  C:::::C                      T:::::T        
-Q:::::O     Q:::::Q  R::::RRRRRR:::::R        D:::::D     D:::::DE:::::::::::::::E           T:::::T          E:::::::::::::::E  C:::::C                      T:::::T        
-Q:::::O     Q:::::Q  R::::R     R:::::R       D:::::D     D:::::DE::::::EEEEEEEEEE           T:::::T          E::::::EEEEEEEEEE  C:::::C                      T:::::T        
-Q:::::O  QQQQ:::::Q  R::::R     R:::::R       D:::::D     D:::::DE:::::E                     T:::::T          E:::::E            C:::::C                      T:::::T        
-Q::::::O Q::::::::Q  R::::R     R:::::R       D:::::D    D:::::D E:::::E       EEEEEE        T:::::T          E:::::E       EEEEEEC:::::C       CCCCCC        T:::::T        
-Q:::::::QQ::::::::QRR:::::R     R:::::R     DDD:::::DDDDD:::::DEE::::::EEEEEEEE:::::E      TT:::::::TT      EE::::::EEEEEEEE:::::E C:::::CCCCCCCC::::C      TT:::::::TT      
- QQ::::::::::::::Q R::::::R     R:::::R     D:::::::::::::::DD E::::::::::::::::::::E      T:::::::::T      E::::::::::::::::::::E  CC:::::::::::::::C      T:::::::::T      
-   QQ:::::::::::Q  R::::::R     R:::::R     D::::::::::::DDD   E::::::::::::::::::::E      T:::::::::T      E::::::::::::::::::::E    CCC::::::::::::C      T:::::::::T      
-     QQQQQQQQ::::QQRRRRRRRR     RRRRRRR     DDDDDDDDDDDDD      EEEEEEEEEEEEEEEEEEEEEE      TTTTTTTTTTT      EEEEEEEEEEEEEEEEEEEEEE       CCCCCCCCCCCCC      TTTTTTTTTTT      
-             Q:::::Q                                                                                                                                                         
-              QQQQQQ                                                               
-                                                        
-                                                        
-                                                        
-                                                        
-                                                        
-                                                        
-                                                        """)
-        
-        r = passVal.post(self.url_value_given_by_teknofest + '/api/kamikaze_bilgisi', json = a)
-        return r
-                
-    def sendLockInfo(self, passVal, TrackingTimerEnd, TrackingTimerStart):
-        #print("I am in send lock info")
-        
-        kitlenme_payload = {
-        "kilitlenmeBaslangicZamani": {
-        "saat":TrackingTimerStart[0],
-        "dakika":TrackingTimerStart[1],
-        "saniye": TrackingTimerStart[2],
-        "milisaniye": TrackingTimerStart[3]
-        },
-        "kilitlenmeBitisZamani": {
-        "saat": TrackingTimerEnd[0],
-        "dakika": TrackingTimerEnd[1],
-        "saniye": TrackingTimerEnd[2],
-        "milisaniye": TrackingTimerEnd[3]
-        },
-        "otonom_kilitlenme": 0
+    def send_lock_info(self, start_time: datetime, end_time: datetime, autolock: bool = False) -> requests.Response:
+        """
+        Send lock/tracking information to server.
+
+        Args:
+            start_time: Tracking lock start datetime.
+            end_time: Tracking lock end datetime.
+            autolock: Indicates if lock was autonomous.
+
+        Returns:
+            HTTP Response from server.
+        """
+        payload = {
+            "startTime": {"hours": start_time.hour, "minutes": start_time.minute, "seconds": start_time.second, "milliseconds": int(start_time.microsecond / 1000)},
+            "endTime":   {"hours": end_time.hour,   "minutes": end_time.minute,   "seconds": end_time.second,   "milliseconds": int(end_time.microsecond / 1000)},
+            "autolock": autolock,
         }
-        r = passVal.post(self.url_value_given_by_teknofest+'/api/kilitlenme_bilgisi', json = kitlenme_payload)
-        self.f.write(str(kitlenme_payload))
-        #print(kitlenme_payload)
-        result = json.dumps(kitlenme_payload)
-        #print("hey you are in the loop")
-        print("""\n ██╗  ██╗██╗██╗     ██╗         ███╗   ███╗ █████╗ ██████╗ ██╗  ██╗
-                    ██║ ██╔╝██║██║     ██║         ████╗ ████║██╔══██╗██╔══██╗██║ ██╔╝
-                    █████╔╝ ██║██║     ██║         ██╔████╔██║███████║██████╔╝█████╔╝ 
-                    ██╔═██╗ ██║██║     ██║         ██║╚██╔╝██║██╔══██║██╔══██╗██╔═██╗ 
-                    ██║  ██╗██║███████╗███████╗    ██║ ╚═╝ ██║██║  ██║██║  ██║██║  ██╗
-                    ╚═╝  ╚═╝╚═╝╚══════╝╚══════╝    ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝
-                    ███████╗██╗   ██╗███████╗ █████╗ ██╗    
-                    ██╔════╝██║   ██║██╔════╝██╔══██╗██║    
-                    ███████╗██║   ██║█████╗  ███████║██║    
-                    ╚════██║██║   ██║██╔══╝  ██╔══██║██║     
-                    ███████║╚██████╔╝██║     ██║  ██║██║   
-                    ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝╚═╝    
-                                                                
-                    ██╗  ██╗██╗██╗     ██╗         ███╗   ███╗ █████╗ ██████╗ ██╗  ██╗
-                    ██║ ██╔╝██║██║     ██║         ████╗ ████║██╔══██╗██╔══██╗██║ ██╔╝
-                    █████╔╝ ██║██║     ██║         ██╔████╔██║███████║██████╔╝█████╔╝ 
-                    ██╔═██╗ ██║██║     ██║         ██║╚██╔╝██║██╔══██║██╔══██╗██╔═██╗ 
-                    ██║  ██╗██║███████╗███████╗    ██║ ╚═╝ ██║██║  ██║██║  ██║██║  ██╗
-                    ╚═╝  ╚═╝╚═╝╚══════╝╚══════╝    ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝  
+        url = f"{self.server_url}/api/lock-info"
+        logging.info(f"Sending lock payload: {json.dumps(payload)}")
+        response = self.session.post(url, json=payload)
+        response.raise_for_status()
+        return response
 
-                    ███████╗██╗   ██╗███████╗ █████╗ ██╗   
-                    ██╔════╝██║   ██║██╔════╝██╔══██╗██║    
-                    ███████╗██║   ██║█████╗  ███████║██║     
-                    ╚════██║██║   ██║██╔══╝  ██╔══██║██║     
-                    ███████║╚██████╔╝██║     ██║  ██║██║    
-                    ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝╚═╝    
-                                                                
-                    ██╗  ██╗██╗██╗     ██╗         ███╗   ███╗ █████╗ ██████╗ ██╗  ██╗
-                    ██║ ██╔╝██║██║     ██║         ████╗ ████║██╔══██╗██╔══██╗██║ ██╔╝
-                    █████╔╝ ██║██║     ██║         ██╔████╔██║███████║██████╔╝█████╔╝ 
-                    ██╔═██╗ ██║██║     ██║         ██║╚██╔╝██║██╔══██║██╔══██╗██╔═██╗ 
-                    ██║  ██╗██║███████╗███████╗    ██║ ╚═╝ ██║██║  ██║██║  ██║██║  ██╗
-                    ╚═╝  ╚═╝╚═╝╚══════╝╚══════╝    ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝                                                                
-                                                        
-                                                        
-                                                        
-                                                        
-                                                        
-                                                        
-                                                        """)
+    def get_coordinates(self) -> dict:
+        """
+        Get QR code coordinates from server.
 
-        return r
-        
-    
-    def getTimeFromServer(self):
-        r = requests.get(self.url_value_given_by_teknofest + '/api/sunucusaati')
-        parsed_data = r.json()
-        #print(parsed_data)
+        Returns:
+            Dictionary containing coordinates.
+        """
+        url = f"{self.server_url}/api/qr-coordinate"
+        logging.info(f"Getting coordinates from {url}")
+        response = self.session.get(url)
+        response.raise_for_status()
+        return response.json()
 
-        #print(type(parsed_data))
-        #print(parsed_data)
-        hours_value = parsed_data["saat"]
-        minutes_values = parsed_data["dakika"]
-        seconds_value = parsed_data["saniye"]
-        milisecs_value = parsed_data["milisaniye"]
-        #print("time respose")
-        #print(r)
-        return int(hours_value), int(minutes_values), int(seconds_value), int(milisecs_value)
+    def send_telemetry(self, vehicle: Vehicle, lock_status: bool, msg: str) -> requests.Response:
+        """
+        Send telemetry data to server.
 
-   
-    def getCoordinates(self,passVal):
-        r = passVal.get(self.url_value_given_by_teknofest + '/api/qr_koordinati')
-        parsed_data = r.json()
-        print(parsed_data)
+        Args:
+            vehicle: UAV vehicle instance.
+            lock_status: Indicates if UAV is locked onto target.
+            msg: Message to be sent.
 
-        #enlem = parsed_data["qrEnlem"]
-        #boylam = parsed_data["qrBoylam"]
-        #print("--------------------KOORDINAT VERSI -----------------------")
-        #print(parsed_data)
-        #return enlem, boylam
-        return parsed_data
-   
-    def sendTelemetry(self,passVal,vehicle, holder_for_lock, utc, msg):
-        global a
-        battery_percent = (((vehicle.battery.voltage - 14) * 100) / 2.8)
-        code = cv2.waitKey(1)
-        if(vehicle.mode=="AUTO" or code == ord('o')):
-            a = 1
-        elif code == ord("p"):
-            a=0
-        x = datetime.datetime.now()
-        telemetry_payload={
-        "takim_numarasi": 19,        # Yarışma Sırasında Güncelle!!!
-        "IHA_enlem": vehicle.location.global_frame.lat,
-        "IHA_boylam": vehicle.location.global_frame.lon,
-        "IHA_irtifa": (vehicle.location.global_frame.alt),
-        "IHA_dikilme": int(vehicle.attitude.pitch*57.2958),
-        "IHA_yonelme": int(vehicle.attitude.yaw*57.2958),
-        "IHA_yatis": int(vehicle.attitude.roll*57.2958),
-        "IHA_hiz": int(vehicle.velocity[0] ) ,
-        "IHA_batarya": int(battery_percent),
-        "IHA_otonom": a,   
-        "IHA_kilitlenme": holder_for_lock,
-        "Hedef_merkez_X": int(msg[1]),
-        "Hedef_merkez_Y":int(msg[2]),
-        "Hedef_genislik": int(msg[4]),
-        "Hedef_yukseklik": int(msg[3]),
-        "GPSSaati": {
-        "saat": x.hour,
-        "dakika": x.minute,
-        "saniye": x.second,
-        "milisaniye": int(round(int(x.microsecond)/1000,0))
+        Returns:
+            HTTP Response from server.
+        """
+        battery_percent = int(((vehicle.battery.voltage - 14) * 100) / 2.8)
+        center_x, center_y, width, height = msg  # target bounding box
+        telemetry_payload = {
+            "team_number":       self.team_number,
+            "uav_latitude":      vehicle.location.global_frame.lat,
+            "uav_longitude":     vehicle.location.global_frame.lon,
+            "uav_altitude":      vehicle.location.global_frame.alt,
+            "uav_pitch":         int(vehicle.attitude.pitch * 57.2958),
+            "uav_yaw":           int(vehicle.attitude.yaw * 57.2958),
+            "uav_roll":          int(vehicle.attitude.roll * 57.2958),
+            "uav_speed":         int(vehicle.velocity[0]),
+            "uav_battery":       battery_percent,
+            "uav_autonomous":    lock_status,
+            "uav_locked":        False,
+            "target_center_x":   center_x,
+            "target_center_y":   center_y,
+            "target_width":      width,
+            "target_height":     height,
+            "gps_timestamp":     None,
         }
-        }
+        url = f"{self.server_url}/api/telemetry"
+        logging.info(f"Sending telemetry payload: {json.dumps(telemetry_payload)}")
+        response = self.session.post(url, json=telemetry_payload)
+        response.raise_for_status()
+        return response
 
-        print(telemetry_payload)
-        r = passVal.post(self.url_value_given_by_teknofest+'/api/telemetri_gonder', json = telemetry_payload)
-        result = json.dumps(telemetry_payload)
-        #print("'sendTelemetry' is called")
-        return r
+    def get_server_time(self) -> Tuple[int, int, int, int]:
+        """
+        Get current time from server.
 
+        Returns:
+            Tuple of (hours, minutes, seconds, milliseconds).
+        """
+        url = f"{self.server_url}/api/server-time"
+        logging.info(f"Getting time from {url}")
+        response = self.session.get(url)
+        response.raise_for_status()
+        data = response.json()
+        return int(data["hours"]), int(data["minutes"]), int(data["seconds"]), int(data["milliseconds"])
 
-    def Run(self,passVal,vehicle,msg,hours_value,minutes_values,seconds_value,
-    milisecs_value, hours_current,minutes_current,seconds_current, milisecs_current,continuity_of_lock, flag_for_start_time, xxxxState):
+    def run(
+        self,
+        vehicle: Vehicle,
+        msg: str,
+        hours_value: int,
+        minutes_values: int,
+        seconds_value: int,
+        milisecs_value: int,
+        hours_current: int,
+        minutes_current: int,
+        seconds_current: int,
+        milisecs_current: int,
+        continuity_of_lock: bool,
+        flag_for_start_time: bool,
+    ) -> Tuple[requests.Response, bool, bool, int, int, int, int]:
+        """
+        Run communication loop.
 
-        #continuity_of_lock, flag_for_start_time,hours_value, minutes_values, seconds_value, milisecs_value = self.sendLockInfo(passVal,msg,continuity_of_lock,
-        #flag_for_start_time,hours_value,minutes_values,seconds_value,milisecs_value,
-        #hours_current,minutes_current,seconds_current,milisecs_current)         
-        
-        a1,a2,a3,a4 = self.getTimeFromServer()
-        utc= [a1,a2,a3,a4]
-        xflag =0
-        if(xxxxState=="Tracking"):
-            xflag=1
-        returnedTelemetry = self.sendTelemetry(passVal,vehicle, xflag , utc, msg)
-        #print("-------------------JSON SERVER RETURN AFTER SENT TELEMETRY--------------")
-        print(returnedTelemetry.json())
+        Args:
+            vehicle: UAV vehicle instance.
+            msg: Message to be sent.
+            hours_value: Hours value.
+            minutes_values: Minutes value.
+            seconds_value: Seconds value.
+            milisecs_value: Milliseconds value.
+            hours_current: Current hours value.
+            minutes_current: Current minutes value.
+            seconds_current: Current seconds value.
+            milisecs_current: Current milliseconds value.
+            continuity_of_lock: Indicates if UAV is locked onto target.
+            flag_for_start_time: Indicates if start time has been set.
 
-        return  returnedTelemetry,continuity_of_lock, flag_for_start_time,hours_value, minutes_values, seconds_value, milisecs_value
-        
-
-    
+        Returns:
+            Tuple of (HTTP Response, continuity_of_lock, flag_for_start_time, hours_value, minutes_values, seconds_value, milisecs_value).
+        """
+        a1, a2, a3, a4 = self.get_server_time()
+        utc = [a1, a2, a3, a4]
+        xflag = 0
+        if continuity_of_lock:
+            xflag = 1
+        returned_telemetry = self.send_telemetry(vehicle, xflag, msg)
+        logging.info(f"Received telemetry response: {returned_telemetry.json()}")
+        return returned_telemetry, continuity_of_lock, flag_for_start_time, hours_value, minutes_values, seconds_value, milisecs_value

@@ -1,146 +1,120 @@
-from typing import Optional
-
+from typing import Optional, List
 from fastapi import FastAPI
-import json
-
 from pydantic import BaseModel
-##############
 import datetime
 
 app = FastAPI()
 
- 
+class TimeStamp(BaseModel):
+    """Represents a timestamp with hours, minutes, seconds, and milliseconds."""
+    hours: int
+    minutes: int
+    seconds: int
+    milliseconds: int
 
-class Telemetri(BaseModel):
-    class GPSSaatiSubClass(BaseModel):
-        saat: int
-        dakika: int
-        saniye: int
-        milisaniye: int
-    takim_numarasi: int
-    IHA_enlem: float
-    IHA_boylam: float
-    IHA_irtifa: float
-    IHA_dikilme: int
-    IHA_yonelme: int
-    IHA_yatis: int
-    IHA_hiz: int
-    IHA_batarya: int
-    IHA_otonom: bool
-    IHA_kilitlenme: bool
-    Hedef_merkez_X: int
-    Hedef_merkez_Y: int
-    Hedef_genislik: int
-    Hedef_yukseklik: int
-    #GPSSaati: Optional[GPSSaatiSubClass] = None
+class Telemetry(BaseModel):
+    """UAV telemetry data."""
+    team_number: int
+    uav_latitude: float
+    uav_longitude: float
+    uav_altitude: float
+    uav_pitch: int
+    uav_yaw: int
+    uav_roll: int
+    uav_speed: int
+    uav_battery: int
+    uav_autonomous: bool
+    uav_locked: bool
+    target_center_x: int
+    target_center_y: int
+    target_width: int
+    target_height: int
+    gps_timestamp: Optional[TimeStamp] = None
 
-class koordinat(BaseModel):
-    qrEnlem: float
-    qrBoylam: float
+class Coordinate(BaseModel):
+    """QR code coordinates."""
+    qr_latitude: float
+    qr_longitude: float
 
+class LockInfo(BaseModel):
+    """Lock (tracking) information with start and end timestamps."""
+    start_time: Optional[TimeStamp] = None
+    end_time: Optional[TimeStamp] = None
+    autolock: bool
 
-class Kilitlenme(BaseModel):
-    class BaslangicSubClass(BaseModel):
-        saat: int
-        dakika: int
-        saniye: int
-        milisaniye: int
-
-    class BitisSubClass(BaseModel):
-        saat: int
-        dakika: int
-        saniye: int
-        milisaniye: int
-
-    kilitlenmeBaslangicZamani: Optional[BaslangicSubClass] = None
-    kilitlenmeBitisZamani: Optional[BitisSubClass] = None
-    otonom_kilitlenme: bool
-
-
-def saatAl():
-    time = str(datetime.datetime.now())
-    print(time)
-    saat = time[11:23].split(":")
-    return {"saat":saat[0],"dakika":saat[1],"saniye":saat[2].split(".")[0],"milisaniye":saat[2].split(".")[1]}
+def get_current_time() -> TimeStamp:
+    """Get the current server time as a TimeStamp."""
+    now = datetime.datetime.now()
+    return TimeStamp(
+        hours=now.hour,
+        minutes=now.minute,
+        seconds=now.second,
+        milliseconds=int(now.microsecond / 1000)
+    )
 
 @app.get("/")
-def read_root():
-    return {"Docs": "/docs",
-            "Redocs":"/redoc",
-            "Owner":"@e"}
+def read_root() -> dict:
+    """Root endpoint providing API documentation paths."""
+    return {"docs": "/docs", "redocs": "/redoc", "owner": "@e"}
 
-@app.get("/api/sunucusaati")
-def sunucusaati():
-    return saatAl()
+@app.get("/api/server-time")
+def server_time() -> TimeStamp:
+    """Endpoint to get server time."""
+    return get_current_time()
 
-@app.post("/api/kamikaze_bilgisi")
-def kamikazeBilgi():
+@app.post("/api/kamikaze-info")
+def post_kamikaze_info() -> int:
+    """Endpoint to receive kamikaze information."""
     return 0
 
-@app.get("/api/qr_koordinati")
-def koordinatAl():
-    a = {
-        "qrEnlem": 41.123456,
-        "qrBoylam": 26.654987
-    }
-    return a
+@app.get("/api/qr-coordinate")
+def get_qr_coordinate() -> Coordinate:
+    """Endpoint to retrieve QR code coordinates."""
+    return Coordinate(qr_latitude=41.123456, qr_longitude=26.654987)
 
-@app.post("/api/telemetri_gonder")
-async def telemetri_gonder(item: Telemetri):
-	a={
-            "sistemSaati": saatAl(),
-            "konumBilgileri": [
+@app.post("/api/telemetry")
+async def post_telemetry(data: Telemetry) -> dict:
+    """Endpoint to receive telemetry and respond with sample position data."""
+    sample_positions: List[dict] = [
+        {
+            "team_number": 1,
+            "uav_latitude": 40.231998,
+            "uav_longitude": 29.0037,
+            "uav_altitude": 500,
+            "uav_pitch": 5,
+            "uav_yaw": 256,
+            "uav_roll": 0,
+            "time_difference": 93,
+        },
+        {
+            "team_number": 2,
+            "uav_latitude": 40.23126,
+            "uav_longitude": 29.003631,
+            "uav_altitude": 190,
+            "uav_pitch": 5,
+            "uav_yaw": 256,
+            "uav_roll": 0,
+            "time_difference": 74,
+        },
+        {
+            "team_number": 3,
+            "uav_latitude": 40.243071,
+            "uav_longitude": 29.003746,
+            "uav_altitude": 222.3,
+            "uav_pitch": 5,
+            "uav_yaw": 256,
+            "uav_roll": 0,
+            "time_difference": 43,
+        }
+    ]
+    return {"server_time": get_current_time(), "positions": sample_positions}
 
-            {
-            "takim_numarasi": 1,
-            "iha_enlem": 40.231998,
-            "iha_boylam": 29.0037,
-            "iha_irtifa": 500,
-            "iha_dikilme": 5,
-            "iha_yonelme": 256,
-            "iha_yatis": 0,
-            "zaman_farki": 93
-            },
-
-            {
-            "takim_numarasi": 2,
-            "iha_enlem": 40.23126,
-            "iha_boylam": 29.003631,
-            "iha_irtifa": 190,
-            "iha_dikilme": 5,
-            "iha_yonelme": 256,
-            "iha_yatis": 0,
-            "zaman_farki": 74
-            },
-
-            {
-            "takim_numarasi": 3,
-            "iha_enlem": 40.243071,
-            "iha_boylam": 29.003746,
-            "iha_irtifa": 222.3,
-            "iha_dikilme": 5,
-            "iha_yonelme": 256,
-            "iha_yatis": 0,
-            "zaman_farki": 43
-
-            }
-
-            ]}
-	return json.dumps(a)
-
-@app.post("/api/giris")
-def telemetri_gonder(item: Telemetri):
+@app.post("/api/login")
+def login(data: Telemetry) -> int:
+    """Endpoint for team login."""
     return 0
 
-@app.post("/api/kilitlenme_bilgisi")
-
-def kilitlenme_bilgisi(item: Kilitlenme):
-    return item
-
-# @app.post("/api/giris")
-# def giris():
-    # return {}
-
-# @app.get("/api/cikis")
-# def cikis():
-    # return {}
+@app.post("/api/lock-info")
+def post_lock_info(info: LockInfo) -> LockInfo:
+    """Endpoint to receive lock information."""
+    return info
