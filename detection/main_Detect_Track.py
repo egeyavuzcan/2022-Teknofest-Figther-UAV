@@ -1,4 +1,6 @@
-from DetectAndTrack import *
+from detection.DetectAndTrack import DetectAndTrack
+from utils.DetectAndTrackUtils import *
+from utils.videoUtils import *
 import argparse
 import setproctitle
 setproctitle.setproctitle('Detection_And_Tracking')

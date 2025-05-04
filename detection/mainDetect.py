@@ -1,4 +1,4 @@
-from yolo.detect import *
+from detection.yolo.detect import *
 import cv2
 
 cfg = 'yolo/model/yolo-drone.cfg'

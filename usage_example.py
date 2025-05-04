@@ -16,14 +16,14 @@ import threading
 def run_server() -> None:
     """Run the FastAPI server using Uvicorn."""
     import uvicorn
-    from server import app
+    from server.server import app
 
     uvicorn.run(app, host="127.0.0.1", port=8000)
 
 
 def client_usage() -> None:
     """Demonstrate usage of the Communication client."""
-    from communication import Communication
+    from server.communication import Communication
     from datetime import datetime
 
     # Initialize client

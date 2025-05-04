@@ -4,8 +4,8 @@ from goturn.network.regressor import regressor
 from goturn.tracker.tracker import tracker
 from goturn.tracker.tracker_manager import tracker_manager
 from yolo.detect import *
-from DetectAndTrackUtils import *
-from videoUtils import *
+from utils.DetectAndTrackUtils import *
+from utils.videoUtils import *
 from colorama import Fore, Back, init, Style
 import argparse
 import sys
@@ -608,13 +608,14 @@ class DetectAndTrack :
         #<------ServerStreamVideo------->
 
         """Create the object for the ccommunication class"""
+        from server.communication import Communication
         commCall = Communication()
         vehicle = commCall.connectDrone()
         """Call the requierd functions to connect to the main server."""
         with requests.Session() as s:
-            pq=commCall.connectToServer(s)
+            pq = commCall.connectToServer(s)
 
-            """
+# ... (rest of the code remains the same)
             Main Running Loop
             """
             ################################################

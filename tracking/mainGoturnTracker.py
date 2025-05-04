@@ -1,7 +1,7 @@
-from goturn.logger.logger import setup_logger
-from goturn.network.regressor import regressor
-from goturn.tracker.tracker import tracker
-from goturn.tracker.tracker_manager import tracker_manager
+from tracking.goturn.logger.logger import setup_logger
+from tracking.goturn.network.regressor import regressor
+from tracking.goturn.tracker.tracker import tracker
+from tracking.goturn.tracker.tracker_manager import tracker_manager
 
 prototxt = 'goturn/nets/tracker.prototxt'
 model = 'goturn/nets/tracker.caffemodel'

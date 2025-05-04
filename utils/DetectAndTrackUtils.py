@@ -1,10 +1,10 @@
 import cv2
 import time
-from yolo.detect import *
+from detection.yolo.detect import *
 import serial
 import time
 import struct
-from communication import *
+from server.communication import *
 
 
 sayac2 = 0

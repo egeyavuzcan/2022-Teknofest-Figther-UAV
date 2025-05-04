@@ -3,7 +3,7 @@ import time
 import numpy as np
 import torch
 
-from imutils.video import FileVideoStream
+from utils.imutils.video import FileVideoStream
 
 class VideoSaver:
     """
